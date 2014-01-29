@@ -7,7 +7,10 @@ function execute(opts) {
 function listenEvent(eventId, opts) {
 
 	child.exec('ls /dev | grep "ttyACM"', function(err, stdout, stderr){
-		console.log(stdout.toString());
+		if(err !== null) {
+			console.log('ARUDINO_SERIAL_OUTPUT: No device found - check Arduino is plugged in and installed!');
+			return;
+		}
 		var device = "/dev/"+stdout.slice(0, stdout.length - 1);
 		var receivedData = "";
 		serialPort = new SerialPort(device, {
