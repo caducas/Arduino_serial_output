@@ -122,7 +122,10 @@ void setup(void) {
 #define MAXPRESSURE 1000
 
 String keyInput = PASSWORD_STARTING_VALUE;
+String inputSign = "";
+int zeroCounter = 0;
 int latestPressed = 0;
+int inputNumber = -1;
 
 void loop()
 {
@@ -139,22 +142,48 @@ void loop()
   // we have some minimum pressure we consider 'valid'
   // pressure of 0 means no pressing!
 
-
+  if(p.z == 0) {
+    if(zeroCounter>150) {
+      if(inputNumber > -1 && inputNumber <= 9) {
+        drawButtonRelease(inputNumber);
+        keyInput = keyInput + String(inputNumber+1);
+        inputNumber = -1;
+      }
+      if(inputNumber == 10) {
+        drawButton(inputNumber, BLACK, RED);
+        keyInput = PASSWORD_STARTING_VALUE;
+        inputNumber = -1;
+      }
+      if(inputNumber == 11) {
+        drawButton(inputNumber, BLACK, GREEN);
+        keyInput = keyInput + PASSWORD_ENDING_VALUE;
+        Serial.println(keyInput);
+        keyInput = PASSWORD_STARTING_VALUE;
+        inputNumber = -1;
+      }
+    }
+    zeroCounter++;
+  }
+  
   if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
-    
+    zeroCounter = 0;
+    if(inputNumber>0) return;
+  
+  
     p.x = map(p.x, TS_MINX, TS_MAXX, tft.width(), 0);
     p.y = map(p.y, TS_MINY, TS_MAXY, tft.height(), 0);
     
+    
+    
+    
     if(p.x >= 0 && p.x < NUMPAD_CANCEL_WIDTH && p.y >= NUMPAD_KEY_HEIGHT*3 && p.y < NUMPAD_PIXEL_HEIGHT) {
-      keyInput = PASSWORD_STARTING_VALUE;
-      drawNumpadFeedback(RED);
+      inputNumber = 10;
+      drawButton(inputNumber, RED, BLACK);
       return;
     }
     if(p.x >= NUMPAD_CANCEL_WIDTH && p.x < NUMPAD_PIXEL_WIDTH && p.y >= NUMPAD_KEY_HEIGHT*3 && p.y < NUMPAD_PIXEL_HEIGHT && keyInput.length()>0) {
-      keyInput = keyInput + PASSWORD_ENDING_VALUE;
-      Serial.println(keyInput);
-      keyInput = PASSWORD_STARTING_VALUE;
-      drawNumpadFeedback(GREEN);
+      inputNumber = 11;
+      drawButton(inputNumber, GREEN, BLACK);
       return;
     }
     
@@ -163,22 +192,10 @@ void loop()
       int pos_Y = NUMPAD_KEY_HEIGHT*(i/3);
       if(p.x >= pos_X && p.x < (pos_X + NUMPAD_KEY_WIDTH) && p.y >= pos_Y && p.y < (pos_Y + NUMPAD_KEY_HEIGHT)) {
         
-    
-        int position_X = NUMPAD_KEY_WIDTH*(i%3);
-        int position_Y = NUMPAD_KEY_HEIGHT*(i/3);
-    
-        tft.fillRect(position_X, position_Y, NUMPAD_KEY_WIDTH, NUMPAD_KEY_HEIGHT, WHITE);
-        tft.setCursor(position_X + (NUMPAD_KEY_WIDTH-26)/2, position_Y + (NUMPAD_KEY_HEIGHT-40)/2);
-        tft.setTextColor(BLACK);
-        tft.setTextSize(5);
-        tft.print(i+1);
-        
-        latestPressed = i+1;
-        
-        String checkString = String(i+1);
-        if(keyInput.length() == 0 || !keyInput.endsWith(checkString)) {
-          keyInput = keyInput + (i+1);
-          drawNumpadFeedback(WHITE);
+        drawButtonPress(i);
+                    
+        if(inputNumber == -1) {
+          inputNumber = i;
         }
       }
     }
@@ -190,7 +207,52 @@ void drawNumpadFeedback(uint16_t color) {
   
   drawNumpad();
 }
+
+void drawButtonPress(int buttonNumber) {
+  drawButton(buttonNumber, WHITE, BLACK);
+}
+
+void drawButtonRelease(int buttonNumber) {
+  drawButton(buttonNumber, BLACK, WHITE);
+}
+
+void drawButton(int buttonNumber, uint16_t color, uint16_t textColor) {
+    
+  if(buttonNumber <10 && buttonNumber >=0) {
+    int position_X = NUMPAD_KEY_WIDTH*(buttonNumber%3);
+    int position_Y = NUMPAD_KEY_HEIGHT*(buttonNumber/3);
+    
+    tft.fillRect(position_X, position_Y, NUMPAD_KEY_WIDTH, NUMPAD_KEY_HEIGHT, color);
+    tft.drawRect(position_X, position_Y, NUMPAD_KEY_WIDTH, NUMPAD_KEY_HEIGHT, WHITE);
+    tft.setCursor(position_X + (NUMPAD_KEY_WIDTH-26)/2, position_Y + (NUMPAD_KEY_HEIGHT-40)/2);
+    tft.setTextColor(textColor);
+    tft.setTextSize(5);
+    tft.print(buttonNumber+1);
+  }
   
+  if(buttonNumber == 10) {
+    int pos_X = 0;
+    int pos_Y = NUMPAD_KEY_HEIGHT*3;
+    tft.fillRect(pos_X, pos_Y, NUMPAD_CANCEL_WIDTH, NUMPAD_KEY_HEIGHT, color);
+    tft.drawRect(pos_X, pos_Y, NUMPAD_CANCEL_WIDTH, NUMPAD_KEY_HEIGHT, WHITE);
+    tft.setCursor(pos_X + (NUMPAD_CANCEL_WIDTH-26)/2, pos_Y + (NUMPAD_KEY_HEIGHT-40)/2);
+    tft.setTextColor(textColor);
+    tft.setTextSize(5);
+    tft.print("X");
+  }
+  
+  if(buttonNumber == 11) {
+    int pos_X = NUMPAD_CANCEL_WIDTH;
+    int pos_Y = NUMPAD_KEY_HEIGHT*3;
+    tft.fillRect(pos_X, pos_Y, NUMPAD_OK_WIDTH, NUMPAD_KEY_HEIGHT, color);
+    tft.drawRect(pos_X, pos_Y, NUMPAD_OK_WIDTH, NUMPAD_KEY_HEIGHT, WHITE);
+    tft.setCursor(pos_X + (NUMPAD_OK_WIDTH-26)/2, pos_Y + (NUMPAD_KEY_HEIGHT-40)/2);
+    tft.setTextColor(textColor);
+    tft.setTextSize(5);
+    tft.print("OK");  
+  }
+}
+
 void drawNumpad() {
 
   tft.fillScreen(BLACK);
